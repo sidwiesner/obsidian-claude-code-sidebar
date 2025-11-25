@@ -14,42 +14,76 @@ This is an Obsidian plugin that embeds Claude Code CLI in a full terminal emulat
 
 ### Core Components
 
-**main.ts** - Plugin entry point. Handles lifecycle (`onload`/`onunload`), registers the custom view type `claude-terminal-view`, manages settings, and activates the view in the right sidebar. Registers `Cmd+Esc` hotkey for focus toggling.
+**main.ts** - Plugin entry point. Handles:
+- Lifecycle (`onload`/`onunload`) and view registration (`claude-terminal-view`)
+- Settings management and plugin path resolution
+- `Cmd+Esc` hotkey for terminal focus toggling
+- Auto-opens terminal in right sidebar on layout ready
 
-**ClaudeTerminalView.ts** - Primary UI component. Manages:
-- xterm.js terminal emulator with WebGL rendering
-- PTY process management via TerminalManager
-- Terminal theming (adapts to Obsidian light/dark mode)
-- File chip UI for inserting current file path
-- Session ID extraction from Claude output
+**ClaudeTerminalView.ts** - Primary UI component managing the terminal experience:
+- xterm.js terminal with WebGL rendering (canvas fallback)
+- PTY process lifecycle via TerminalManager
+- Dynamic theming via MutationObserver on `document.body` class changes
+- File chip UI that inserts current file path on click
+- Session ID extraction from Claude CLI output
+- Empty state UI with click-to-start interaction
+- ResizeObserver for terminal fitting
 
-**TerminalManager.ts** - Manages PTY subprocess. Uses a Python helper script to create a real pseudo-terminal, handling stdin/stdout/stderr and terminal resize signals.
+**TerminalManager.ts** - PTY process wrapper:
+- Spawns Python helper script with command and args
+- Manages stdin/stdout/stderr pipes
+- Handles terminal resize via dedicated fd3 pipe (8-byte protocol: rows[2], cols[2], padding[4])
+- Augments PATH environment for Node.js detection (NVM, Homebrew, Volta, etc.)
 
-**SessionManager.ts** - Persists session IDs to enable Claude's `--resume` functionality.
+**SessionManager.ts** - Persists Claude session IDs to Obsidian's data store, enabling `--resume` functionality. Supports session listing, pruning, and deletion.
 
-**commandDetector.ts** - Cross-platform path detection for Node.js and Claude CLI. Checks NVM, Homebrew, system paths, and supports user overrides via settings.
+**commandDetector.ts** - Cross-platform CLI path detection with caching:
+- Detects Node.js and Claude CLI paths
+- Supports macOS (Homebrew, NVM), Linux, and Windows WSL
+- Checks common installation locations and global npm prefix
+- Respects user overrides from settings
 
-**SettingsTab.ts** - Plugin settings UI for configuring Node.js/Claude/Python paths.
+**SettingsTab.ts** - Plugin settings UI for configuring Node.js/Claude/Python paths and terminal appearance.
 
-**types.ts** - TypeScript interfaces including `AIChatSettings`.
+**types.ts** - TypeScript interfaces (`AIChatSettings`, etc.)
+
+### PTY Communication
+
+The Python helper (`resources/pty-helper.py`) bridges Obsidian and Claude CLI:
+- **fd 0 (stdin)**: User input from xterm.js → Claude CLI
+- **fd 1 (stdout)**: Claude output → xterm.js
+- **fd 2 (stderr)**: Errors → xterm.js
+- **fd 3 (resize)**: 8-byte resize signals (rows, cols as uint16, plus padding)
+
+Sets `TERM=xterm-256color` and uses `pty.fork()` for real pseudo-terminal behavior.
 
 ### Claude Code Integration
 
-The plugin spawns Claude CLI via a PTY with:
-- `--verbose` flag
-- Working directory set to vault root
+The plugin spawns Claude CLI via:
+```bash
+claude --verbose
+```
+Working directory is set to vault root, so Claude can access all vault files.
 
-User interacts directly with the terminal - keystrokes go to Claude's stdin, output displays in xterm.js.
+User interacts directly with the terminal—keystrokes go to Claude's stdin, output renders in xterm.js. No API wrapper or custom protocol.
 
-### Key Patterns
+### Key Implementation Patterns
 
-- **PTY-based**: Real terminal emulation, not simulated chat
-- **Python helper**: `resources/pty-helper.py` creates the pseudo-terminal
-- **Theme sync**: Watches `document.body` class changes to update terminal colors
-- **File context**: Click file chip to insert relative path at cursor
+- **Real terminal, not simulated chat**: Full PTY emulation preserves all Claude Code features (colors, interactive prompts, etc.)
+- **Empty state → terminal**: Click empty state to spawn Claude process and show terminal
+- **Theme synchronization**: MutationObserver watches for Obsidian theme class changes on `document.body`
+- **File context insertion**: Footer file chip inserts `activeFile.path` into terminal on click
+- **Path detection with fallbacks**: `commandDetector.ts` checks multiple locations, caches results, respects overrides
 
-## TypeScript Configuration
+## Build Configuration
 
-- Target: ES6 (transpiled to ES2018 by esbuild)
-- Strict mode enabled (`strictNullChecks`, `noImplicitAny`)
-- Output: CommonJS bundle (`main.js`)
+- **esbuild**: Bundles TypeScript to CommonJS (`main.js`)
+- **Target**: ES2018 (TypeScript compiles to ES6, esbuild transpiles to ES2018)
+- **External**: Obsidian API, Electron, CodeMirror, and all Node.js builtins
+- **Dev mode**: Watch mode with inline sourcemaps
+- **Production**: Minified, no sourcemaps, includes `tsc -noEmit` type checking
+
+## Platform Support
+
+- **macOS/Linux**: Native PTY support via Python
+- **Windows**: Requires WSL; plugin detects WSL availability and spawns Claude inside WSL environment
