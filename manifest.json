@@ -1,5 +1,5 @@
 {
-	"id": "claude-sidebar",
+	"id": "obsidian-claude-code-sidebar",
 	"name": "Claude Sidebar",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",

@@ -1,5 +1,5 @@
 {
-	"name": "claude-sidebar",
+	"name": "obsidian-claude-code-sidebar",
 	"version": "1.0.0",
 	"description": "Embed Claude Code terminal directly in your Obsidian sidebar.",
 	"main": "main.js",
