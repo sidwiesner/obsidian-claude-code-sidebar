@@ -24,7 +24,7 @@ Embed Claude Code directly into Obsidian. This plugin runs the Claude Code CLI i
 3. Enable the plugin in Obsidian's Community Plugins settings
 4. Click the terminal icon in your sidebar or use `Cmd+Esc` to open
 
-> **Note**: This plugin runs Claude Code with `--dangerously-skip-permissions` for seamless operation. Use in vaults you trust.
+> **Note**: Claude Code will prompt for permissions as needed. You can configure permission settings in Claude Code itself.
 
 ## Troubleshooting
 

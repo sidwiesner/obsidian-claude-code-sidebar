@@ -10,43 +10,43 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture
 
-This is an Obsidian plugin that integrates Claude Code CLI directly into Obsidian's interface, enabling AI-assisted workflows without leaving the editor.
+This is an Obsidian plugin that embeds Claude Code CLI in a full terminal emulator (xterm.js) inside the Obsidian sidebar.
 
 ### Core Components
 
-**main.ts** - Plugin entry point. Handles lifecycle (`onload`/`onunload`), registers the custom view type `ai-chat-view`, manages settings, and activates the chat view in the right sidebar.
+**main.ts** - Plugin entry point. Handles lifecycle (`onload`/`onunload`), registers the custom view type `claude-terminal-view`, manages settings, and activates the view in the right sidebar. Registers `Cmd+Esc` hotkey for focus toggling.
 
-**ChatView.ts** - Primary UI component (~930 lines). Manages:
-- Real-time chat interface with streaming message rendering
-- Claude Code process spawning via `child_process`
-- Stream JSON parsing from Claude's `--output-format stream-json` output
-- Session management with resumption support (`--resume`)
-- Context-aware messaging (includes active file path when enabled)
-- Tool use visualization (collapsible cards for bash, file operations, TodoWrite)
+**ClaudeTerminalView.ts** - Primary UI component. Manages:
+- xterm.js terminal emulator with WebGL rendering
+- PTY process management via TerminalManager
+- Terminal theming (adapts to Obsidian light/dark mode)
+- File chip UI for inserting current file path
+- Session ID extraction from Claude output
+
+**TerminalManager.ts** - Manages PTY subprocess. Uses a Python helper script to create a real pseudo-terminal, handling stdin/stdout/stderr and terminal resize signals.
+
+**SessionManager.ts** - Persists session IDs to enable Claude's `--resume` functionality.
 
 **commandDetector.ts** - Cross-platform path detection for Node.js and Claude CLI. Checks NVM, Homebrew, system paths, and supports user overrides via settings.
 
-**SettingsTab.ts** - Plugin settings UI for configuring Node.js/Claude paths and debug mode.
+**SettingsTab.ts** - Plugin settings UI for configuring Node.js/Claude/Python paths.
 
 **types.ts** - TypeScript interfaces including `AIChatSettings`.
 
 ### Claude Code Integration
 
-The plugin spawns Claude as a child process with these arguments:
-- `--output-format stream-json` (for real-time streaming)
-- `--permission-mode bypassPermissions`
-- `--dangerously-skip-permissions`
-- `--verbose`
-- `--resume [session_id]` (for session continuation)
+The plugin spawns Claude CLI via a PTY with:
+- `--verbose` flag
+- Working directory set to vault root
 
-Working directory is set to the vault root. User input is piped via stdin.
+User interacts directly with the terminal - keystrokes go to Claude's stdin, output displays in xterm.js.
 
 ### Key Patterns
 
-- Message types: user, assistant, tool_use, tool_result, system
-- Streaming: JSON lines parsed incrementally, UI updates on each complete message
-- Tool rendering: Collapsible sections with special handling for TodoWrite (task cards)
-- File context: Active Obsidian file path included in messages when toggle enabled
+- **PTY-based**: Real terminal emulation, not simulated chat
+- **Python helper**: `resources/pty-helper.py` creates the pseudo-terminal
+- **Theme sync**: Watches `document.body` class changes to update terminal colors
+- **File context**: Click file chip to insert relative path at cursor
 
 ## TypeScript Configuration
 
