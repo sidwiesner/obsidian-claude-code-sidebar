@@ -41,4 +41,4 @@ Embed Claude Code directly into Obsidian. This plugin runs the Claude Code CLI i
 
 ## Credits
 
-Forked from the original [obsidian-ai-agent](https://github.com/Luka-Hanzek/obsidian-ai-agent) by Luka Hanzek, which used a chat-based interface. This version takes a different approach by embedding the full Claude Code terminal experience.
+Forked from the original [obsidian-ai-agent](https://github.com/m-rgba/obsidian-ai-agent) by Martin Mark, which used a chat-based interface. This version takes a different approach by embedding the full Claude Code terminal experience.
